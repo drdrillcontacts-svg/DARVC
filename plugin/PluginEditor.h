@@ -1,6 +1,11 @@
 #pragma once
-#include <JuceHeader.h>
+
+// Include JUCE module headers directly (see PluginProcessor.h).
+#include <juce_gui_extra/juce_gui_extra.h>
+
 #include "PluginProcessor.h"
+
+#include <memory>
 
 class DARVCEditor final : public juce::AudioProcessorEditor
 {
@@ -28,6 +33,10 @@ private:
     void chooseInputFile();
     void chooseModelFile();
     void requestConversion();
+    // Keeps statusText and the visible label in sync. Previously several
+    // handlers updated statusText and only called repaint(), but the text is
+    // drawn by statusLabel (a child component), so the UI never changed.
+    void setStatus(const juce::String&);
     void styleButton(juce::TextButton&, bool primary = false);
     void setupSlider(juce::Slider&, double, double, double, const juce::String&);
 

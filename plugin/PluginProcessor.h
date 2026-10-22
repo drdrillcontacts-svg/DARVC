@@ -1,5 +1,9 @@
 #pragma once
-#include <JuceHeader.h>
+
+// JUCE CMake builds do not generate a <JuceHeader.h> unless
+// juce_generate_juce_header() is called. Include the JUCE module headers
+// directly instead (this is the approach used by JUCE's own CMake examples).
+#include <juce_audio_processors/juce_audio_processors.h>
 
 class DARVCProcessor final : public juce::AudioProcessor
 {
@@ -9,7 +13,9 @@ public:
 
     void prepareToPlay(double, int) override;
     void releaseResources() override;
+    bool isBusesLayoutSupported(const BusesLayout&) const override;
     void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    using AudioProcessor::processBlock;
 
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }

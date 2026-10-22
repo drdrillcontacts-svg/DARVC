@@ -10,6 +10,21 @@ DARVCProcessor::DARVCProcessor()
 void DARVCProcessor::prepareToPlay(double, int) {}
 void DARVCProcessor::releaseResources() {}
 
+bool DARVCProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
+{
+    // Only mono/stereo pass-through is supported. Hosts such as Logic Pro
+    // (auval) reject AU plug-ins that do not constrain their bus layouts.
+    const auto mainOutput = layouts.getMainOutputChannelSet();
+    if (mainOutput != juce::AudioChannelSet::mono()
+        && mainOutput != juce::AudioChannelSet::stereo())
+        return false;
+
+    if (mainOutput != layouts.getMainInputChannelSet())
+        return false;
+
+    return true;
+}
+
 void DARVCProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
     juce::ScopedNoDenormals noDenormals;

@@ -1,5 +1,7 @@
 #include "PluginEditor.h"
 
+#include <cmath>
+
 namespace
 {
     const juce::Colour bg       { 0xff050914 };
@@ -11,6 +13,12 @@ namespace
     const juce::Colour purple   { 0xffbd43ff };
     const juce::Colour text     { 0xffedf5ff };
     const juce::Colour muted    { 0xff8ca5ca };
+
+    // juce::Font(float, int) is deprecated in JUCE 8; build fonts from FontOptions.
+    juce::Font makeFont(float height, int styleFlags = juce::Font::plain)
+    {
+        return juce::Font(juce::FontOptions(height, styleFlags));
+    }
 
     void drawPanel(juce::Graphics& g, juce::Rectangle<float> r, float radius = 14.0f)
     {
@@ -40,15 +48,42 @@ DARVCEditor::DARVCEditor(DARVCProcessor& p)
                      &browseModelButton, &outputButton, &modelsButton,
                      &libraryButton, &settingsButton }) styleButton(*b);
 
+    // The two input-mode buttons sit side by side, so only their touching
+    // edges should be "connected" (square); all other buttons keep fully
+    // rounded corners.
+    fromDawButton.setConnectedEdges(juce::Button::ConnectedOnRight);
+    fromFileButton.setConnectedEdges(juce::Button::ConnectedOnLeft);
+
     fromDawButton.setClickingTogglesState(true);
     fromFileButton.setClickingTogglesState(true);
     fromDawButton.setToggleState(true, juce::dontSendNotification);
-    fromDawButton.onClick = [this] { inputMode = "From DAW"; fromDawButton.setToggleState(true, juce::dontSendNotification); fromFileButton.setToggleState(false, juce::dontSendNotification); statusText = "DAW capture is not connected in this build"; repaint(); };
-    fromFileButton.onClick = [this] { inputMode = "From File"; fromFileButton.setToggleState(true, juce::dontSendNotification); fromDawButton.setToggleState(false, juce::dontSendNotification); chooseInputFile(); };
+    fromDawButton.onClick = [this]
+    {
+        inputMode = "From DAW";
+        fromDawButton.setToggleState(true, juce::dontSendNotification);
+        fromFileButton.setToggleState(false, juce::dontSendNotification);
+        setStatus("DAW capture is not connected in this build");
+    };
+    fromFileButton.onClick = [this]
+    {
+        inputMode = "From File";
+        fromFileButton.setToggleState(true, juce::dontSendNotification);
+        fromDawButton.setToggleState(false, juce::dontSendNotification);
+        chooseInputFile();
+    };
     chooseFileButton.onClick = [this] { chooseInputFile(); };
     browseModelButton.onClick = [this] { chooseModelFile(); };
     convertButton.onClick = [this] { requestConversion(); };
-    outputButton.onClick = [this] { if (inputFile.existsAsFile()) inputFile.getParentDirectory().revealToUser(); else statusText = "No output has been created yet"; repaint(); };
+    outputButton.onClick = [this]
+    {
+        if (inputFile.existsAsFile())
+            inputFile.getParentDirectory().revealToUser();
+        else
+            setStatus("No output has been created yet");
+    };
+    modelsButton.onClick = [this] { setStatus("Model manager is not available in this build. Use Browse to pick a .pth file."); };
+    libraryButton.onClick = [this] { setStatus("Library is not available in this build."); };
+    settingsButton.onClick = [this] { setStatus("Settings are not available in this build."); };
 
     f0Box.addItem("RMVPE", 1);
     f0Box.addItem("Harvest", 2);
@@ -68,7 +103,7 @@ DARVCEditor::DARVCEditor(DARVCProcessor& p)
     {
         l.setText(t, juce::dontSendNotification);
         l.setColour(juce::Label::textColourId, c);
-        l.setFont(juce::Font((float) size, juce::Font::plain));
+        l.setFont(makeFont(static_cast<float>(size)));
         addAndMakeVisible(l);
     };
     setupLabel(inputLabel, "INPUT AUDIO", 12, cyan);
@@ -82,14 +117,19 @@ DARVCEditor::DARVCEditor(DARVCProcessor& p)
 
 DARVCEditor::~DARVCEditor() = default;
 
+void DARVCEditor::setStatus(const juce::String& newStatus)
+{
+    statusText = newStatus;
+    statusLabel.setText(statusText, juce::dontSendNotification);
+    repaint();
+}
+
 void DARVCEditor::styleButton(juce::TextButton& b, bool primary)
 {
     b.setColour(juce::TextButton::buttonColourId, primary ? juce::Colour(0xff173d91) : panel2);
     b.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff164c86));
     b.setColour(juce::TextButton::textColourOffId, text);
     b.setColour(juce::TextButton::textColourOnId, text);
-    b.setColour(juce::ComboBox::outlineColourId, border);
-    b.setConnectedEdges(juce::Button::ConnectedOnLeft | juce::Button::ConnectedOnRight);
 }
 
 void DARVCEditor::setupSlider(juce::Slider& s, double min, double max, double value, const juce::String& suffix)
@@ -109,46 +149,46 @@ void DARVCEditor::setupSlider(juce::Slider& s, double min, double max, double va
 
 void DARVCEditor::paint(juce::Graphics& g)
 {
-    g.fillAll(bg);
-    juce::ColourGradient background(juce::Colour(0xff0a1734), 0, 0,
-                                    bg, (float)getWidth(), (float)getHeight(), false);
+    juce::ColourGradient background(juce::Colour(0xff0a1734), 0.0f, 0.0f,
+                                    bg, static_cast<float>(getWidth()),
+                                    static_cast<float>(getHeight()), false);
     g.setGradientFill(background);
     g.fillAll();
 
     // Header and main panels
-    drawPanel(g, { 18.0f, 18.0f, (float)getWidth() - 36.0f, 72.0f }, 16.0f);
-    drawPanel(g, { 18.0f, 102.0f, 435.0f, (float)getHeight() - 190.0f }, 16.0f);
-    drawPanel(g, { 465.0f, 102.0f, (float)getWidth() - 483.0f, (float)getHeight() - 190.0f }, 16.0f);
-    drawPanel(g, { 36.0f, (float)getHeight() - 76.0f, (float)getWidth() - 72.0f, 54.0f }, 13.0f);
+    drawPanel(g, { 18.0f, 18.0f, static_cast<float>(getWidth()) - 36.0f, 72.0f }, 16.0f);
+    drawPanel(g, { 18.0f, 102.0f, 435.0f, static_cast<float>(getHeight()) - 190.0f }, 16.0f);
+    drawPanel(g, { 465.0f, 102.0f, static_cast<float>(getWidth()) - 483.0f, static_cast<float>(getHeight()) - 190.0f }, 16.0f);
+    drawPanel(g, { 36.0f, static_cast<float>(getHeight()) - 76.0f, static_cast<float>(getWidth()) - 72.0f, 54.0f }, 13.0f);
 
     g.setColour(text);
-    g.setFont(juce::Font(30.0f, juce::Font::plain));
+    g.setFont(makeFont(30.0f));
     g.drawText("D A R V C", 38, 31, 220, 34, juce::Justification::centredLeft);
     g.setColour(muted);
-    g.setFont(juce::Font(10.5f));
+    g.setFont(makeFont(10.5f));
     g.drawText("RVC VOICE CONVERTER   •   AI POWERED", 260, 36, 310, 24, juce::Justification::centredLeft);
 
     g.setColour(cyan.withAlpha(0.8f));
     g.fillRoundedRectangle(34.0f, 117.0f, 3.0f, 56.0f, 1.5f);
     g.setColour(cyan);
-    g.setFont(juce::Font(12.0f, juce::Font::bold));
+    g.setFont(makeFont(12.0f, juce::Font::bold));
     g.drawText("01   INPUT & MODEL", 52, 118, 350, 22, juce::Justification::centredLeft);
     g.setColour(muted);
-    g.setFont(juce::Font(11.0f));
+    g.setFont(makeFont(11.0f));
     g.drawText("ADVANCED SETTINGS", 52, 358, 350, 22, juce::Justification::centredLeft);
 
     // Neon circular audio visualization (decorative preview)
-    const float cx = 805.0f + (getWidth() - 1180.0f) * 0.28f;
+    const float cx = 805.0f + (static_cast<float>(getWidth()) - 1180.0f) * 0.28f;
     const float cy = 350.0f;
-    const float radius = juce::jmin(190.0f, (float)getHeight() * 0.27f);
+    const float radius = juce::jmin(190.0f, static_cast<float>(getHeight()) * 0.27f);
     for (int ring = 0; ring < 4; ++ring)
     {
-        const float r = radius - ring * 18.0f;
+        const float r = radius - static_cast<float>(ring) * 18.0f;
         juce::Path path;
         for (int i = 0; i <= 240; ++i)
         {
-            const float a = juce::MathConstants<float>::twoPi * (float)i / 240.0f;
-            const float wobble = 1.0f + 0.045f * std::sin(a * (7.0f + ring) + ring) + 0.018f * std::sin(a * 13.0f);
+            const float a = juce::MathConstants<float>::twoPi * static_cast<float>(i) / 240.0f;
+            const float wobble = 1.0f + 0.045f * std::sin(a * (7.0f + static_cast<float>(ring)) + static_cast<float>(ring)) + 0.018f * std::sin(a * 13.0f);
             const float x = cx + std::cos(a) * r * wobble;
             const float y = cy + std::sin(a) * r * wobble;
             if (i == 0) path.startNewSubPath(x, y); else path.lineTo(x, y);
@@ -165,23 +205,23 @@ void DARVCEditor::paint(juce::Graphics& g)
     g.setColour(border);
     g.drawEllipse(cx - 69.0f, cy - 69.0f, 138.0f, 138.0f, 1.2f);
     g.setColour(text);
-    g.setFont(juce::Font(20.0f));
-    g.drawText("DARVC", (int)cx - 58, (int)cy - 14, 116, 28, juce::Justification::centred);
+    g.setFont(makeFont(20.0f));
+    g.drawText("DARVC", static_cast<int>(cx) - 58, static_cast<int>(cy) - 14, 116, 28, juce::Justification::centred);
 
     g.setColour(muted);
-    g.setFont(juce::Font(11.0f));
+    g.setFont(makeFont(11.0f));
     g.drawText("OUTPUT PREVIEW", 500, 122, 200, 20, juce::Justification::centredLeft);
     g.setColour(juce::Colour(0xff43e6a8));
-    g.fillEllipse((float)getWidth() - 145.0f, 126.0f, 8.0f, 8.0f);
+    g.fillEllipse(static_cast<float>(getWidth()) - 145.0f, 126.0f, 8.0f, 8.0f);
     g.setColour(text);
     g.drawText("READY", getWidth() - 130, 120, 90, 20, juce::Justification::centredLeft);
 
     g.setColour(muted);
     g.drawText("00:00  /  --:--", 505, getHeight() - 174, 160, 22, juce::Justification::centredLeft);
     g.setColour(juce::Colour(0xff172744));
-    g.fillRoundedRectangle(505.0f, (float)getHeight() - 144.0f, (float)getWidth() - 550.0f, 4.0f, 2.0f);
+    g.fillRoundedRectangle(505.0f, static_cast<float>(getHeight()) - 144.0f, static_cast<float>(getWidth()) - 550.0f, 4.0f, 2.0f);
     g.setColour(blue);
-    g.fillRoundedRectangle(505.0f, (float)getHeight() - 144.0f, 24.0f, 4.0f, 2.0f);
+    g.fillRoundedRectangle(505.0f, static_cast<float>(getHeight()) - 144.0f, 24.0f, 4.0f, 2.0f);
 }
 
 void DARVCEditor::resized()
@@ -214,16 +254,18 @@ void DARVCEditor::chooseInputFile()
 {
     fileChooser = std::make_unique<juce::FileChooser>("Select input audio", juce::File{}, "*.wav;*.flac;*.aif;*.aiff");
     fileChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
-        [this](const juce::FileChooser& chooser)
+        [safeThis = juce::Component::SafePointer<DARVCEditor>(this)](const juce::FileChooser& chooser)
         {
+            // The editor may have been closed while the dialog was open.
+            if (safeThis == nullptr)
+                return;
+
             const auto file = chooser.getResult();
             if (file.existsAsFile())
             {
-                inputFile = file;
-                chooseFileButton.setButtonText(file.getFileName());
-                statusText = "Input selected. Conversion engine is not connected yet.";
-                statusLabel.setText(statusText, juce::dontSendNotification);
-                repaint();
+                safeThis->inputFile = file;
+                safeThis->chooseFileButton.setButtonText(file.getFileName());
+                safeThis->setStatus("Input selected. Conversion engine is not connected yet.");
             }
         });
 }
@@ -232,25 +274,24 @@ void DARVCEditor::chooseModelFile()
 {
     fileChooser = std::make_unique<juce::FileChooser>("Select RVC .pth model", juce::File{}, "*.pth");
     fileChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
-        [this](const juce::FileChooser& chooser)
+        [safeThis = juce::Component::SafePointer<DARVCEditor>(this)](const juce::FileChooser& chooser)
         {
+            if (safeThis == nullptr)
+                return;
+
             const auto file = chooser.getResult();
             if (file.existsAsFile())
             {
-                selectedModel = file.getFileName();
-                modelLabel.setText(selectedModel, juce::dontSendNotification);
-                statusText = "Model selected. Index file can be configured in a later build.";
-                statusLabel.setText(statusText, juce::dontSendNotification);
-                repaint();
+                safeThis->selectedModel = file.getFileName();
+                safeThis->modelLabel.setText(safeThis->selectedModel, juce::dontSendNotification);
+                safeThis->setStatus("Model selected. Index file can be configured in a later build.");
             }
         });
 }
 
 void DARVCEditor::requestConversion()
 {
-    if (!inputFile.existsAsFile()) statusText = "Choose an input WAV first.";
-    else if (selectedModel == "No model selected") statusText = "Choose an RVC .pth model first.";
-    else statusText = "UI prototype only: RVC worker is not connected; no conversion was run.";
-    statusLabel.setText(statusText, juce::dontSendNotification);
-    repaint();
+    if (!inputFile.existsAsFile()) setStatus("Choose an input WAV first.");
+    else if (selectedModel == "No model selected") setStatus("Choose an RVC .pth model first.");
+    else setStatus("UI prototype only: RVC worker is not connected; no conversion was run.");
 }
