@@ -19,7 +19,7 @@ private:
     DARVCProcessor& processor;
     juce::TextButton fromDawButton { "From DAW" }, fromFileButton { "From File" };
     juce::TextButton chooseFileButton { "Choose WAV" }, browseModelButton { "Browse" };
-    juce::TextButton convertButton { "Convert" }, outputButton { "Reveal Output" };
+    juce::TextButton convertButton { "✧   Convert" }, outputButton { "Reveal Output" };
     juce::TextButton modelsButton { "Models" }, libraryButton { "Library" }, settingsButton { "Settings" };
     juce::ComboBox f0Box;
     juce::Slider pitchSlider, indexSlider, protectSlider;

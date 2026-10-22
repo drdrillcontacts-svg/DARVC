@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.22)
-project(DARVC VERSION 0.1.0 LANGUAGES CXX)
+# JUCE (and its bundled VST3/AU dependencies) contain C sources, so the C
+# language must be enabled alongside C++. With CXX only, CMake generation on
+# macOS failed with: "Missing variable is: CMAKE_C_COMPILE_OBJECT".
+project(DARVC VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
