@@ -1,0 +1,75 @@
+name: Build DARVC
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    name: Windows / VST3
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -A x64 -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Package VST3
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          $plugin = Get-ChildItem -Path build -Recurse -Directory -Filter "DARVC.vst3" | Select-Object -First 1
+          if (-not $plugin) { throw "DARVC.vst3 bundle was not found after build." }
+          Compress-Archive -Path $plugin.FullName -DestinationPath artifacts/DARVC-Windows-VST3.zip -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DARVC-Windows-VST3
+          path: artifacts/DARVC-Windows-VST3.zip
+          if-no-files-found: error
+
+  build-macos:
+    name: macOS / VST3 + AU
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Package plugins
+        run: |
+          mkdir -p artifacts
+          find build -type d \( -name "DARVC.vst3" -o -name "DARVC.component" \) -print
+          find build -type d -name "DARVC.vst3" -exec ditto -c -k --sequesterRsrc --keepParent {} artifacts/DARVC-macOS-ARM64-VST3.zip \;
+          find build -type d -name "DARVC.component" -exec ditto -c -k --sequesterRsrc --keepParent {} artifacts/DARVC-macOS-ARM64-AU.zip \;
+          test -f artifacts/DARVC-macOS-ARM64-VST3.zip
+          test -f artifacts/DARVC-macOS-ARM64-AU.zip
+
+      - name: Upload VST3
+        uses: actions/upload-artifact@v4
+        with:
+          name: DARVC-macOS-ARM64-VST3
+          path: artifacts/DARVC-macOS-ARM64-VST3.zip
+          if-no-files-found: error
+
+      - name: Upload AU
+        uses: actions/upload-artifact@v4
+        with:
+          name: DARVC-macOS-ARM64-AU
+          path: artifacts/DARVC-macOS-ARM64-AU.zip
+          if-no-files-found: error
