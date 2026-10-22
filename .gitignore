@@ -1,0 +1,12 @@
+# CMake / JUCE build trees (FetchContent downloads JUCE into build/_deps)
+build/
+build-*/
+artifacts/
+
+# Python worker
+__pycache__/
+*.pyc
+
+# OS / editor noise
+.DS_Store
+.vscode/
