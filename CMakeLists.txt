@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 # JUCE (and its bundled VST3/AU dependencies) contain C sources, so the C
 # language must be enabled alongside C++. With CXX only, CMake generation on
 # macOS failed with: "Missing variable is: CMAKE_C_COMPILE_OBJECT".
-project(DARVC VERSION 0.1.0 LANGUAGES C CXX)
+project(DARVC VERSION 0.2.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -46,7 +46,13 @@ juce_add_plugin(DARVC
 target_sources(DARVC PRIVATE
     plugin/PluginProcessor.cpp
     plugin/PluginEditor.cpp
+    plugin/ConversionEngine.cpp
 )
+
+# The Python worker ships inside the plugin binary and is extracted to the
+# DARVC data folder at runtime, so the installed plugin works on its own
+# (only the heavy RVC engine itself is installed separately, via Settings).
+juce_add_binary_data(DARVCData SOURCES worker/worker.py)
 
 target_include_directories(DARVC PRIVATE plugin)
 
@@ -61,6 +67,7 @@ target_compile_definitions(DARVC PUBLIC
 )
 
 target_link_libraries(DARVC PRIVATE
+    DARVCData
     juce::juce_audio_utils
     juce::juce_audio_processors
     juce::juce_gui_extra
