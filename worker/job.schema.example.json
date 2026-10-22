@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "job_id": "example-0001",
+  "input": "/absolute/path/to/input.wav",
+  "output": "/absolute/path/to/output.wav",
+  "model": "/absolute/path/to/voice.pth",
+  "index": "/absolute/path/to/voice.index",
+  "pitch": 0,
+  "f0_method": "rmvpe",
+  "index_rate": 0.75,
+  "protect": 0.33
+}
