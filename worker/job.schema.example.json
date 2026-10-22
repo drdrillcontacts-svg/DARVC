@@ -5,8 +5,11 @@
   "output": "/absolute/path/to/output.wav",
   "model": "/absolute/path/to/voice.pth",
   "index": "/absolute/path/to/voice.index",
+  "models_dir": "/absolute/path/to/models",
   "pitch": 0,
   "f0_method": "rmvpe",
   "index_rate": 0.75,
-  "protect": 0.33
+  "protect": 0.33,
+  "device": "auto",
+  "model_version": "v2"
 }

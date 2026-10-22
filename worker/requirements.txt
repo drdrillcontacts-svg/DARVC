@@ -1,1 +1,10 @@
-# Intentionally empty until an RVC backend and its compatible versions are selected.
+# DARVC conversion engine. Installed into a managed virtualenv by the
+# plugin's Settings panel ("Install / Repair Engine"), or manually into any
+# Python 3.10-3.12 environment whose interpreter you select in Settings.
+#
+# torch is intentionally not listed here: the correct wheel differs per
+# platform (CPU / CUDA / MPS). The installer picks a pinned, known-good
+# build for your machine, e.g.:
+#   pip install torch==2.1.1 torchaudio==2.1.1 --index-url https://download.pytorch.org/whl/cpu
+#   pip install torch==2.1.1+cu118 torchaudio==2.1.1+cu118 --index-url https://download.pytorch.org/whl/cu118
+rvc-python==0.1.5
